@@ -13,4 +13,5 @@ config_schema:
   - ["bt.scan_loop", "b", false, {"title": "Auto-start a continuous BLE scan loop"}]
 
 libs:
+  - origin: https://github.com/mongoose-os-libs/bt-common
   - origin: https://github.com/mongoose-os-libs/rpc-common
