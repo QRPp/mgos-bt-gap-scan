@@ -40,7 +40,7 @@ bool mgos_bt_gap_scan_start(const struct mgos_bt_gap_scan_opts *opts) {
 }
 
 void mgos_bt_gap_scan_stop() {
-  MGOS_TMR_STOP(bgs_tmr);
+  MGOS_TMR_CLR(bgs_tmr);
   mgos_event_remove_handler(MGOS_BT_GAP_EVENT_SCAN_STOP, scan_restart, NULL);
 }
 
