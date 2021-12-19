@@ -32,6 +32,8 @@ bool mgos_bt_gap_scan_start(const struct mgos_bt_gap_scan_opts *opts) {
   else {
     bgs_opts.duration_ms = 5000;
     bgs_opts.active = mgos_sys_config_get_bt_scan_active();
+    bgs_opts.interval_ms = 96;
+    bgs_opts.window_ms = 48;
   }
   TRY_RETF(mgos_event_add_handler, MGOS_BT_GAP_EVENT_SCAN_STOP, scan_restart,
            NULL);
