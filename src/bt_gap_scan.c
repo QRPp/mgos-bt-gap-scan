@@ -22,7 +22,9 @@ static void scan_start(void *userdata) {
 }
 
 static void scan_restart(int ev, void *ev_data, void *userdata) {
-  if (ev == MGOS_BT_GAP_EVENT_SCAN_STOP) scan_start(userdata);
+  if (ev != MGOS_BT_GAP_EVENT_SCAN_STOP) return;
+  mgos_event_trigger(BT_GAP_SCAN_GAP, ev_data);
+  scan_start(userdata);
 }
 
 bool mgos_bt_gap_scan_start(const struct mgos_bt_gap_scan_opts *opts) {
@@ -61,6 +63,7 @@ static void bt_scan_stop_handler(struct mg_rpc_request_info *ri, void *cb_arg,
 }
 
 bool mgos_bt_gap_scan_init() {
+  mgos_event_register_base(BT_GAP_SCAN_GAP, "bt-gap");
   if (mgos_sys_config_get_bt_scan_loop()) mgos_bt_gap_scan_start(NULL);
   mg_rpc_add_handler(mgos_rpc_get_global(), "BT.ScanStart", "",
                      bt_scan_start_handler, NULL);
