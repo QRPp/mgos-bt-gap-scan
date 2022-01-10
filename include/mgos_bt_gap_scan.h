@@ -9,8 +9,10 @@ extern "C" {
 
 #define BT_GAP_SCAN_GAP MGOS_EVENT_BASE('B', 'T', 'S')
 
+bool mgos_bt_gap_scan_pin(const void *opaque);
 bool mgos_bt_gap_scan_start(const struct mgos_bt_gap_scan_opts *opts);
 void mgos_bt_gap_scan_stop();
+bool mgos_bt_gap_scan_unpin(const void *opaque);
 
 #ifdef __cplusplus
 }

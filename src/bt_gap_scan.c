@@ -4,27 +4,66 @@
 #include <mgos_rpc.h>
 
 #include <mgos-helpers/log.h>
+#include <mgos-helpers/mem.h>
 #include <mgos-helpers/tmr.h>
 
 #include <mgos_bt_gap_scan.h>
 
+struct bgs_pin {
+  SLIST_ENTRY(bgs_pin) entry;
+  const void *opaque;
+};
+
+static SLIST_HEAD(bgs_pins, bgs_pin) bgs_pins;
 static struct mgos_bt_gap_scan_opts bgs_opts;
 static mgos_timer_id bgs_tmr = MGOS_INVALID_TIMER_ID;
 
+static bool pin_exists() {
+  return !SLIST_EMPTY(&bgs_pins);
+}
+
 #define SCAN_RETRY_S 1
 static void scan_start(void *userdata) {
-  if (mgos_bt_gap_scan(&bgs_opts))
+  bool pinned = pin_exists();
+  if (!pinned && mgos_bt_gap_scan(&bgs_opts)) {
     bgs_tmr = MGOS_INVALID_TIMER_ID;
-  else {
-    FNERR(CALL_FAILED_FMT ", wait %u s", "mgos_bt_gap_scan", SCAN_RETRY_S);
-    MGOS_TMR_SET(bgs_tmr, SCAN_RETRY_S * 1000, 0, scan_start, NULL);
+    return;
   }
+  if (!pinned)
+    FNERR(CALL_FAILED_FMT ", wait %u s", "mgos_bt_gap_scan", SCAN_RETRY_S);
+  MGOS_TMR_SET(bgs_tmr, SCAN_RETRY_S * 1000, 0, scan_start, NULL);
 }
 
 static void scan_restart(int ev, void *ev_data, void *userdata) {
   if (ev != MGOS_BT_GAP_EVENT_SCAN_STOP) return;
   mgos_event_trigger(BT_GAP_SCAN_GAP, ev_data);
   scan_start(userdata);
+}
+
+bool mgos_bt_gap_scan_pin(const void *opaque) {
+  struct bgs_pin *pin;
+  SLIST_FOREACH(pin, &bgs_pins, entry) {
+    if (pin->opaque == opaque) return false;
+  }
+  pin = TRY_MALLOC_OR(return false, pin);
+  pin->opaque = opaque;
+  SLIST_INSERT_HEAD(&bgs_pins, pin, entry);
+  return true;
+}
+
+bool mgos_bt_gap_scan_unpin(const void *opaque) {
+  struct bgs_pin *pin, *prev = NULL;
+  SLIST_FOREACH(pin, &bgs_pins, entry) {
+    if (pin->opaque == opaque) break;
+    prev = pin;
+  }
+  if (!pin) return false;
+  if (prev)
+    SLIST_REMOVE_AFTER(prev, entry);
+  else
+    SLIST_REMOVE_HEAD(&bgs_pins, entry);
+  free(pin);
+  return true;
 }
 
 bool mgos_bt_gap_scan_start(const struct mgos_bt_gap_scan_opts *opts) {
@@ -63,6 +102,7 @@ static void bt_scan_stop_handler(struct mg_rpc_request_info *ri, void *cb_arg,
 }
 
 bool mgos_bt_gap_scan_init() {
+  SLIST_INIT(&bgs_pins);
   mgos_event_register_base(BT_GAP_SCAN_GAP, "bt-gap");
   if (mgos_sys_config_get_bt_scan_loop()) mgos_bt_gap_scan_start(NULL);
   mg_rpc_add_handler(mgos_rpc_get_global(), "BT.ScanStart", "",
