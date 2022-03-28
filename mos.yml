@@ -10,6 +10,7 @@ sources: [src]
 
 config_schema:
   - ["bt.scan_active", "b", false, {"title": "Get extra BLE advertisement data"}]
+  - ["bt.scan_hung_reboot", "i", 60, {"title": "Auto-reboot after this many scan failures (0: off)"}]
   - ["bt.scan_loop", "b", false, {"title": "Auto-start a continuous BLE scan loop"}]
 
 libs:

@@ -25,12 +25,16 @@ static bool pin_exists() {
 #define SCAN_RETRY_S 1
 static void scan_start(void *userdata) {
   bool pinned = pin_exists();
+  static int failures = 0;
   if (!pinned && mgos_bt_gap_scan(&bgs_opts)) {
     bgs_tmr = MGOS_INVALID_TIMER_ID;
+    failures = 0;
     return;
   }
   if (!pinned)
     FNERR(CALL_FAILED_FMT ", wait %u s", "mgos_bt_gap_scan", SCAN_RETRY_S);
+  int max_failures = mgos_sys_config_get_bt_scan_hung_reboot();
+  if (max_failures && ++failures == max_failures) mgos_system_restart_after(3000);
   MGOS_TMR_SET(bgs_tmr, SCAN_RETRY_S * 1000, 0, scan_start, NULL);
 }
 
