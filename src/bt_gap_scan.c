@@ -3,6 +3,7 @@
 #include <mgos_config.h>
 #include <mgos_rpc.h>
 
+#include <mgos-helpers/bt.h>
 #include <mgos-helpers/log.h>
 #include <mgos-helpers/mem.h>
 #include <mgos-helpers/tmr.h>
@@ -91,6 +92,13 @@ void mgos_bt_gap_scan_stop() {
   mgos_event_remove_handler(MGOS_BT_GAP_EVENT_SCAN_STOP, scan_restart, NULL);
 }
 
+static void bt_scan_debug(int ev, void *ev_data, void *userdata) {
+  if (ev != MGOS_BT_GAP_EVENT_SCAN_RESULT) return;
+  struct mgos_bt_gap_scan_result *r = ev_data;
+  FNLOG(LL_INFO, "%s BLE adv (rssi %d)",
+        BT_ADDR_STRA(&r->addr, MGOS_BT_ADDR_STRINGIFY_TYPE), r->rssi);
+}
+
 static void bt_scan_start_handler(struct mg_rpc_request_info *ri, void *cb_arg,
                                   struct mg_rpc_frame_info *fi,
                                   struct mg_str args) {
@@ -108,6 +116,9 @@ static void bt_scan_stop_handler(struct mg_rpc_request_info *ri, void *cb_arg,
 bool mgos_bt_gap_scan_init() {
   SLIST_INIT(&bgs_pins);
   mgos_event_register_base(BT_GAP_SCAN_GAP, "bt-gap");
+  if (mgos_sys_config_get_bt_scan_debug())
+    mgos_event_add_group_handler(MGOS_BT_GAP_EVENT_SCAN_RESULT, bt_scan_debug,
+                                 NULL);
   if (mgos_sys_config_get_bt_scan_loop()) mgos_bt_gap_scan_start(NULL);
   mg_rpc_add_handler(mgos_rpc_get_global(), "BT.ScanStart", "",
                      bt_scan_start_handler, NULL);
